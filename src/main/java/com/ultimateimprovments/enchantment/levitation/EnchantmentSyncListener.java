@@ -1,4 +1,4 @@
-package com.ultimateimprovments.enchantment.magnet;
+package com.ultimateimprovments.enchantment.levitation;
 
 import com.ultimateimprovments.core.Main;
 import org.bukkit.Bukkit;
@@ -16,12 +16,12 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 /**
- * EnchantmentSyncListener — detects tools carrying the Magnet enchantment and
- * keeps the PDC mirror ({@code ui:magnet_level}) in sync with the real enchantment.
+ * EnchantmentSyncListener — detects chestplates carrying the Levitation enchantment and
+ * keeps the PDC mirror ({@code ui:levitation_level}) in sync with the real enchantment.
  * <p>
- * This is the failsafe backbone: whenever a tool with the charm is seen, its
+ * This is the failsafe backbone: whenever an item with the charm is seen, its
  * level (always 1) is mirrored into PDC, so a datapack crash never loses the
- * charm. When the datapack comes back, PDC-only tools get the real charm re-applied.
+ * charm. When the datapack comes back, PDC-only items get the real charm re-applied.
  * <p>
  * Sync triggers:
  * <ul>
@@ -37,9 +37,6 @@ public class EnchantmentSyncListener implements Listener {
 
     /** Periodic scan interval: 5 minutes (300 seconds). */
     private static final long SCAN_INTERVAL_TICKS = 20L * 60L * 5L;
-
-    /** Grindstone result slot index. */
-    private static final int GRINDSTONE_RESULT_SLOT = 2;
 
     // ─────────────────────────────────────────────────────────────
     //  EVENTS
@@ -85,7 +82,7 @@ public class EnchantmentSyncListener implements Listener {
     //  SWEEP
     // ─────────────────────────────────────────────────────────────
 
-    /** Syncs every tool in the player's inventory (slots, armor, offhand, cursor). */
+    /** Syncs every item in the player's inventory (slots, armor, offhand, cursor). */
     public static void syncInventory(Player player) {
         if (player == null || !player.isOnline()) return;
 

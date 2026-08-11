@@ -1,4 +1,4 @@
-package com.ultimateimprovments.enchantment.aoe;
+package com.ultimateimprovments.enchantment.levitation;
 
 import com.ultimateimprovments.core.Main;
 import org.bukkit.Material;
@@ -11,38 +11,37 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * AoE (Area of Effect) enchantment — real datapack enchantment with a PDC failsafe.
+ * Levitation enchantment — real datapack enchantment with a PDC failsafe.
  * <p>
- * Since Minecraft 1.21 enchantments are data-driven: the plugin ships a datapack
- * ({@code UI-Datapack}, file {@code data/ui/enchantment/aoe.json}) that
- * registers {@code ui:aoe} as a REAL enchantment (glint, description with
- * level, anvil &amp; book compatibility, {@code /enchant} support).
+ * Registers {@code ui:levitation} (file {@code data/ui/enchantment/levitation.json})
+ * as a REAL data-driven enchantment: glint, description, anvil &amp; book compatibility,
+ * {@code /enchant} support. Has exactly ONE level.
  * <p>
- * <b>Failsafe design:</b> every item that carries the enchantment ALSO stores the
- * level in the {@code ui:aoe_level} PDC key — a mirror used as a backup:
+ * <b>Failsafe design (same as AoE/AutoSmelt/VeinMiner/TreeCapitator/Flight):</b> every item
+ * carrying the charm ALSO stores the level (always 1) in the {@code ui:levitation_level}
+ * PDC key — a backup mirror:
  * <ul>
- *   <li><b>Datapack alive:</b> the real enchantment is the source of truth. Whenever
- *       an item with it is detected, its level is mirrored into PDC.</li>
- *   <li><b>Datapack crashed:</b> {@link #getLevel} falls back to PDC, so enchanted
- *       items keep working; PDC-only legacy items work too.</li>
- *   <li><b>Datapack restored:</b> if an item has PDC but lost the real enchantment
- *       (it disappeared while the datapack was down), the enchantment is re-applied
- *       from PDC automatically — the PDC is kept, the charm is just added back.</li>
+ *   <li><b>Datapack alive:</b> the real enchantment is the source of truth;</li>
+ *   <li><b>Datapack crashed:</b> {@link #getLevel} falls back to PDC, so chestplates keep working;</li>
+ *   <li><b>Datapack restored:</b> items with PDC but no real charm get it re-applied.</li>
  * </ul>
- * No lore is written or managed anymore — the real enchantment renders its own
- * description, and PDC is purely internal.
  * <p>
- * Max level: 255<br>
- * Works on: pickaxe, shovel, axe, hoe<br>
- * Radius = enchantment level (1 → 3×3, 2 → 5×5, ...)
+ * Effect: while a player WEARS a chestplate with the Levitation charm, holding the
+ * jump key gently lifts them upward (jetpack-style, ~1 block per press).
+ * <p>
+ * Max level: 1<br>
+ * Works on: chestplate
  */
 public final class Enchantment {
 
     /** The real enchantment key registered by the datapack. */
-    public static final NamespacedKey ENCHANTMENT_KEY = new NamespacedKey("ui", "aoe");
+    public static final NamespacedKey ENCHANTMENT_KEY = new NamespacedKey("ui", "levitation");
 
-    /** PDC mirror key: {@code ui:aoe_level} (backup copy of the enchantment level). */
-    public static final NamespacedKey LEVEL_KEY = new NamespacedKey(Main.getInstance(), "aoe_level");
+    /** PDC mirror key: {@code ui:levitation_level} (backup copy of the enchantment level). */
+    public static final NamespacedKey LEVEL_KEY = new NamespacedKey(Main.getInstance(), "levitation_level");
+
+    /** The only level this enchantment can have. */
+    public static final int MAX_LEVEL = 1;
 
     private Enchantment() {}
 
@@ -63,52 +62,57 @@ public final class Enchantment {
     }
 
     // ─────────────────────────────────────────────────────────────
-    //  GET / SET / HAS / REMOVE LEVEL
+    //  GET / SET / HAS / REMOVE
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Returns the AoE enchantment level on the given item.
-     * <p>
+     * Returns whether the given item has the Levitation enchantment.
      * Real enchantment first; falls back to the PDC mirror when the datapack
-     * is unavailable, so items keep working even if the datapack dies.
+     * is unavailable, so chestplates keep working even if the datapack dies.
      *
-     * @param item the item to check
-     * @return enchantment level (1-255), or 0 if not present
+     * @param item the chestplate to check
+     * @return enchantment level (1 if present, 0 if not)
      */
     public static int getLevel(@NotNull ItemStack item) {
         org.bukkit.enchantments.Enchantment real = getRegisteredEnchantment();
-        if (real != null) {
-            int lvl = item.getEnchantmentLevel(real);
-            if (lvl > 0) return Math.max(1, Math.min(255, lvl));
+        if (real != null && item.containsEnchantment(real)) {
+            return 1;
         }
         // Datapack down or enchantment missing → PDC mirror
-        return getPdcLevel(item);
+        return getPdcLevel(item) > 0 ? 1 : 0;
     }
 
     /**
-     * Sets the AoE enchantment level on the given item.
-     * <p>
+     * Checks if the given item has the Levitation enchantment.
+     */
+    public static boolean hasLevitation(@NotNull ItemStack item) {
+        return getLevel(item) > 0;
+    }
+
+    /**
+     * Sets the Levitation enchantment on the given chestplate.
+     * The enchantment has only ONE level — any level ≥ 1 is clamped to 1.
      * Applies the REAL enchantment when the datapack is loaded and always writes
      * the PDC mirror. No lore is touched.
      *
-     * @param item  the item to modify
-     * @param level enchantment level (1-255)
+     * @param item  the chestplate to modify
+     * @param level requested level (clamped to 1)
      */
     public static void setLevel(@NotNull ItemStack item, int level) {
-        if (level < 1 || level > 255) return;
+        if (level < 1) return;
         if (!isValidTool(item)) return;
 
         org.bukkit.enchantments.Enchantment real = getRegisteredEnchantment();
         if (real != null) {
-            item.addUnsafeEnchantment(real, level);
+            item.addUnsafeEnchantment(real, 1);
         }
-        setPdcLevel(item, level);
+        setPdcLevel(item, 1);
     }
 
     /**
-     * Removes the AoE enchantment from the given item (real enchantment and PDC mirror).
+     * Removes the Levitation enchantment from the given item (real + PDC mirror).
      *
-     * @param item the item to modify
+     * @param item the chestplate to modify
      */
     public static void removeLevel(@NotNull ItemStack item) {
         org.bukkit.enchantments.Enchantment real = getRegisteredEnchantment();
@@ -116,13 +120,6 @@ public final class Enchantment {
             item.removeEnchantment(real);
         }
         clearPdcLevel(item);
-    }
-
-    /**
-     * Checks if the given item has the AoE enchantment.
-     */
-    public static boolean hasAoe(@NotNull ItemStack item) {
-        return getLevel(item) > 0;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -135,43 +132,42 @@ public final class Enchantment {
      * <p>
      * Idempotent and cheap when nothing changed:
      * <ul>
-     *   <li>real enchantment present → mirror its level into PDC;</li>
+     *   <li>real enchantment present → mirror level 1 into PDC;</li>
      *   <li>PDC present but real enchantment missing (datapack was down) →
-     *       re-apply the real enchantment from PDC, keeping the PDC;</li>
+     *       re-apply the real enchantment from PDC;</li>
      *   <li>neither present → nothing to do.</li>
      * </ul>
      *
-     * @param item the item to sync
+     * @param item the chestplate to sync
      */
     public static void syncItem(@NotNull ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return;
         if (!isValidTool(item)) return;
 
         org.bukkit.enchantments.Enchantment real = getRegisteredEnchantment();
-        int pdcLevel = getPdcLevel(item);
+        boolean hasPdc = getPdcLevel(item) > 0;
 
         if (real != null) {
-            int realLevel = item.getEnchantmentLevel(real);
-            if (realLevel > 0) {
-                // Datapack alive: mirror the real level into PDC (backup).
-                if (realLevel != pdcLevel) setPdcLevel(item, realLevel);
-            } else if (pdcLevel > 0) {
+            if (item.containsEnchantment(real)) {
+                // Datapack alive: mirror level 1 into PDC (backup).
+                if (!hasPdc) setPdcLevel(item, 1);
+            } else if (hasPdc) {
                 // Datapack restored after a crash: re-apply the charm from PDC.
-                item.addUnsafeEnchantment(real, pdcLevel);
+                item.addUnsafeEnchantment(real, 1);
             }
         }
         // Datapack down: leave the item as-is — PDC is the source until it returns.
     }
 
     /**
-     * Mirrors the REAL enchantment level into PDC, but NEVER re-applies the charm
+     * Mirrors the REAL enchantment into PDC, but NEVER re-applies the charm
      * from PDC. Used on hot inventory events (click/drag) where mutating stacks is
      * risky — the re-apply direction is left to pickups, the join sweep and the
-     * periodic scan. This also protects the grindstone flow: after a legitimate
+     * periodic scan. Also protects the grindstone flow: after a legitimate
      * disenchantment the PDC mirror is cleared separately, so the charm isn't
      * silently put back.
      *
-     * @param item the item to mirror
+     * @param item the chestplate to mirror
      */
     public static void mirrorItem(@NotNull ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return;
@@ -180,10 +176,8 @@ public final class Enchantment {
         org.bukkit.enchantments.Enchantment real = getRegisteredEnchantment();
         if (real == null) return; // datapack down — nothing to mirror from
 
-        int realLevel = item.getEnchantmentLevel(real);
-        if (realLevel > 0) {
-            int pdcLevel = getPdcLevel(item);
-            if (realLevel != pdcLevel) setPdcLevel(item, realLevel);
+        if (item.containsEnchantment(real)) {
+            if (getPdcLevel(item) <= 0) setPdcLevel(item, 1);
         }
     }
 
@@ -192,7 +186,7 @@ public final class Enchantment {
      * Used when the charm is legitimately removed (e.g. grindstone disenchantment),
      * so the failsafe doesn't re-apply it later.
      *
-     * @param item the item to clear
+     * @param item the chestplate to clear
      */
     public static void clearPdcMirror(@NotNull ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return;
@@ -204,7 +198,7 @@ public final class Enchantment {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Checks if the item type can accept the AoE enchantment.
+     * Checks if the item can accept the Levitation enchantment.
      */
     public static boolean isValidTool(@Nullable ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return false;
@@ -212,34 +206,31 @@ public final class Enchantment {
     }
 
     /**
-     * Checks if the material can accept the AoE enchantment.
+     * Checks if the material can accept the Levitation enchantment.
      */
     public static boolean isValidToolType(@NotNull Material material) {
         String name = material.name();
-        return name.endsWith("_PICKAXE")
-                || name.endsWith("_SHOVEL")
-                || name.endsWith("_AXE")
-                || name.endsWith("_HOE");
+        return name.endsWith("_CHESTPLATE");
     }
 
     // ─────────────────────────────────────────────────────────────
     //  PDC MIRROR HELPERS
     // ─────────────────────────────────────────────────────────────
 
-    /** Reads the PDC mirror level (1-255) or 0 if absent. */
+    /** Reads the PDC mirror (1 if present, 0 if absent). */
     private static int getPdcLevel(@NotNull ItemStack item) {
         if (!item.hasItemMeta()) return 0;
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return 0;
         Integer level = meta.getPersistentDataContainer().get(LEVEL_KEY, PersistentDataType.INTEGER);
-        return level != null ? Math.max(1, Math.min(255, level)) : 0;
+        return level != null && level > 0 ? 1 : 0;
     }
 
-    /** Writes the PDC mirror level. */
+    /** Writes the PDC mirror (always 1). */
     private static void setPdcLevel(@NotNull ItemStack item, int level) {
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return;
-        meta.getPersistentDataContainer().set(LEVEL_KEY, PersistentDataType.INTEGER, Math.max(1, Math.min(255, level)));
+        meta.getPersistentDataContainer().set(LEVEL_KEY, PersistentDataType.INTEGER, 1);
         item.setItemMeta(meta);
     }
 
