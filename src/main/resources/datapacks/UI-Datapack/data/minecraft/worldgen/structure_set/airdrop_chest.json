@@ -1,7 +1,7 @@
 {
   "structures": [
     {
-      "structure": "minecraft:end_village",
+      "structure": "minecraft:airdrop_chest",
       "weight": 1
     }
   ],
@@ -10,7 +10,7 @@
     "spacing": 1,
     "separation": 24,
     "spread_type": "triangular",
-    "salt": 83137425,
+    "salt": 310403,
     "frequency_reduction_method": "default",
     "frequency": 1
   }
