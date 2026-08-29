@@ -6,8 +6,6 @@ plugins {
 dependencies {
     paperweight.paperDevBundle("26.2.build.+")
     implementation project(':ui-core')
-    implementation project(':ui-shared')
-    implementation project(':ui-mbs')
 }
 
 tasks {
@@ -15,7 +13,7 @@ tasks {
         dependsOn(shadowJar)
     }
     shadowJar {
-        archiveBaseName.set('UI-Energy')
+        archiveBaseName.set('UI-MBS')
         archiveVersion.set(project.version.toString())
         configurations = [project.configurations.runtimeClasspath]
     }
